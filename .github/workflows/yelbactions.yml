@@ -3,10 +3,10 @@ name: Yelb Docker Build, Push & Update Deployment
 on:
   push:
     branches:
-    - main # Runs workflow on push to the main branch
+    - main
   pull_request:
     branches:
-    - main # Runs workflow on pull requests to main
+    - main
 
 jobs:
   build_and_push:
@@ -66,9 +66,10 @@ jobs:
 
     # Step 9: Commit and push updated `yelp-deploy.yaml`
     - name: Commit and push updated `yelp-deploy.yaml`
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
         git config --global user.email "che80911@gmail.com"
         git config --global user.name "Cheson"
         git add yelp-deploy.yaml
-        git commit -m "Update deployment file with latest image tags"
-        git push https://${{ secrets.GH_TOKEN }}@github.com/adminaws009/myrepo.git HEAD:main
+        git diff --cached --quiet || (git commit -m "Update deployment file with latest image tags" && git push https://x-access-token:${GH
