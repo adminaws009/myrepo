@@ -71,4 +71,4 @@ jobs:
         git config --global user.name "Cheson"
         git add yelp-deploy.yaml
         git commit -m "Update deployment file with latest image tags"
-        git push origin main
+        git push https://${{ secrets.GH_TOKEN }}@github.com/adminaws009/myrepo.git HEAD:main

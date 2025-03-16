@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: my-cluster
+  region: us-east-1
+  version: "1.27"
+
+vpc:
+  id: "" # Leave empty to automatically create a new VPC
+  subnets: {} # Let eksctl handle the subnets automatically
+  # No NAT Gateway or VPC endpoints configuration needed here.
+
+nodeGroups:
+- name: private-nodes
+  instanceType: t2.micro
+  desiredCapacity: 4
+  minSize: 4
+  maxSize: 4
+  privateNetworking: true # Ensures nodes are in private subnets
+  ssh:
+    allow: true
+    publicKeyName: my-keypair # Replace with your SSH key pair
+
+iam:
+  withOIDC: true
+
+cloudWatch:
+  clusterLogging:
+    enableTypes: [ "api", "audit", "authenticator", "controllerManager", "scheduler" ]
