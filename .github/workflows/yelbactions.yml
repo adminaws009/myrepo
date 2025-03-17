@@ -3,10 +3,10 @@ name: Yelb Docker Build, Push & Update Deployment
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
     branches:
-    - main
+      - main
 
 jobs:
   build_and_push:
@@ -60,11 +60,11 @@ jobs:
     # Step 8: Update `yelp-deploy.yaml` with latest image tags
     - name: Update `yelp-deploy.yaml` with latest image tags
       run: |
-        sed -i "s|image: awsadmin009/yelb-images:yelb-appserver-.*|image: awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
-        sed -i "s|image: awsadmin009/yelb-images:yelb-db-.*|image: awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
-        sed -i "s|image: awsadmin009/yelb-images:yelb-ui-.*|image: awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
-      # Step 9: Commit and push updated `yelp-deploy.yaml`
-      # Step 9: Commit and push updated `yelp-deploy.yaml`
+        sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-appserver-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
+        sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-db-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
+        sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-ui-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
+
+    # Step 9: Commit and push updated `yelp-deploy.yaml`
     - name: Commit and push updated `yelp-deploy.yaml`
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -78,3 +78,50 @@ jobs:
           git commit -m "Update deployment file with latest image tags"
           git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
         fi
+
+    # Step 10: Set Up AWS Credentials
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    # Step 11: Install eksctl
+    - name: Install eksctl
+      run: |
+        curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+        sudo mv /tmp/eksctl /usr/local/bin
+
+    # Step 12: Create EKS Cluster using eksctl
+    - name: Create EKS Cluster with eksctl
+      run: |
+        eksctl create cluster -f eks-cluster.yaml
+        eksctl utils wait-for-nodegroup --cluster my-cluster --nodegroup private-nodes --region ${{ secrets.AWS_REGION }}
+
+    # Step 13: Update kubeconfig to connect to EKS
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
+
+    # Step 14: Deploy to EKS Cluster
+    - name: Apply Kubernetes Deployment
+      run: |
+        kubectl apply -f yelp-deploy.yaml
+
+    # Step 15: Verify Deployment
+    - name: Verify Deployment
+      run: kubectl get pods -A
+
+    # Step 16: Ensure All Pods Are Deleted Before Cluster Deletion
+    - name: Force delete all pods before cluster deletion
+      if: always()
+      run: |
+        kubectl delete pods --all --force --grace-period=0 --namespace default || true
+        kubectl delete pods --all --force --grace-period=0 --all-namespaces || true
+
+    # Step 17: Delete the EKS Cluster
+    - name: Delete EKS Cluster
+      if: always()
+      run: |
+        eksctl delete cluster --name my-cluster --region ${{ secrets.AWS_REGION }}
