@@ -3,10 +3,10 @@ name: Yelb Docker Build, Push & Update Deployment
 on:
   push:
     branches:
-      - main
+    - main
   pull_request:
     branches:
-      - main
+    - main
 
 jobs:
   build_and_push:
@@ -97,7 +97,7 @@ jobs:
     - name: Create EKS Cluster with eksctl
       run: |
         eksctl create cluster -f eks-cluster.yaml
-        eksctl utils wait-for-nodegroup --cluster my-cluster --nodegroup private-nodes --region ${{ secrets.AWS_REGION }}
+        eksctl utils wait-for-nodegroup --cluster my-cluster --nodegroup private-nodes --region ${{ secrets.AWS_REGION }} --timeout 30m
 
     # Step 13: Update kubeconfig to connect to EKS
     - name: Update kubeconfig

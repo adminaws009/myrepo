@@ -22,9 +22,6 @@ nodeGroups:
     allow: true
     publicKeyName: my-keypair # Replace with your SSH key pair
 
-iam:
-  withOIDC: true
-
 cloudWatch:
   clusterLogging:
     enableTypes: [ "api", "audit", "authenticator", "controllerManager", "scheduler" ]
