@@ -1,12 +1,12 @@
-name: Yelb Docker Build and Push
+name: Yelb Docker Build, Push & Update Deployment
 
 on:
   push:
     branches:
-    - main # Runs workflow on push to the main branch
+    - main
   pull_request:
     branches:
-    - main # Runs workflow on pull requests to main
+    - main
 
 jobs:
   build_and_push:
@@ -56,3 +56,25 @@ jobs:
         echo "awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }}"
         echo "awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }}"
         echo "awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }}"
+
+    # Step 8: Update `yelp-deploy.yaml` with latest image tags
+    - name: Update `yelp-deploy.yaml` with latest image tags
+      run: |
+        sed -i "s|image: awsadmin009/yelb-images:yelb-appserver-.*|image: awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
+        sed -i "s|image: awsadmin009/yelb-images:yelb-db-.*|image: awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
+        sed -i "s|image: awsadmin009/yelb-images:yelb-ui-.*|image: awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
+      # Step 9: Commit and push updated `yelp-deploy.yaml`
+      # Step 9: Commit and push updated `yelp-deploy.yaml`
+    - name: Commit and push updated `yelp-deploy.yaml`
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: |
+        git config --global user.email "che80911@gmail.com"
+        git config --global user.name "Cheson"
+        git add yelp-deploy.yaml
+        if git diff --cached --quiet; then
+          echo "No changes to commit."
+        else
+          git commit -m "Update deployment file with latest image tags"
+          git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
+        fi
