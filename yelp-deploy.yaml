@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
       - name: yelb-ui
-        image: awsadmin009/yelb-images:yelb-ui-214cb50
+        image: awsadmin009/yelb-images:yelb-ui-50eb012
         ports:
         - containerPort: 80
 ---
@@ -122,7 +122,7 @@ spec:
     spec:
       containers:
       - name: yelb-db
-        image: awsadmin009/yelb-images:yelb-db-214cb50
+        image: awsadmin009/yelb-images:yelb-db-50eb012
         ports:
         - containerPort: 5432
 ---
@@ -144,6 +144,6 @@ spec:
     spec:
       containers:
       - name: yelb-appserver
-        image: awsadmin009/yelb-images:yelb-appserver-214cb50
+        image: awsadmin009/yelb-images:yelb-appserver-50eb012
         ports:
         - containerPort: 4567
