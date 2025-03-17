@@ -120,6 +120,10 @@ jobs:
         kubectl delete pods --all --force --grace-period=0 --namespace default || true
         kubectl delete pods --all --force --grace-period=0 --all-namespaces || true
 
+    - name: Delete EKS Cluster
+      run: |
+        eksctl delete cluster -f eks-cluster.yaml    
+
     # Step 17: Delete the EKS Cluster
     - name: Delete EKS Cluster
       if: always()
