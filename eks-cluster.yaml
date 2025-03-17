@@ -9,7 +9,8 @@ metadata:
 vpc:
   id: "" # Leave empty to automatically create a new VPC
   subnets: {} # Let eksctl handle the subnets automatically
-  nat: false # This disables the creation of NAT Gateways
+  natGateway:
+    disable: true # Correctly disable NAT Gateway
 
 nodeGroups:
 - name: private-nodes
