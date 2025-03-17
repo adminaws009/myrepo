@@ -8,17 +8,16 @@ metadata:
 
 vpc:
   id: "" # Leave empty to automatically create a new VPC
-  subnets: {} # Let eksctl handle the subnets automatically
-  natGateway:
-    disable: true # Correctly disable NAT Gateway
+  subnets: {}
+  enableDNSSupport: true
+  enableDNSHostnames: true
 
 nodeGroups:
-- name: private-nodes
+- name: node-group
   instanceType: t2.micro
   desiredCapacity: 4
   minSize: 4
   maxSize: 4
-  privateNetworking: true # Ensures nodes are in private subnets
   ssh:
     allow: true
     publicKeyName: my-keypair # Replace with your SSH key pair
