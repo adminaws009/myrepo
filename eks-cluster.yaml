@@ -12,7 +12,6 @@ vpc:
   nat: false # This disables the creation of NAT Gateways
   enableDNSSupport: true
   enableDNSHostnames: true
-  # No NAT Gateway or VPC endpoints configuration needed here.
 
 nodeGroups:
 - name: private-nodes
