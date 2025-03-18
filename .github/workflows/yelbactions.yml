@@ -81,12 +81,11 @@ jobs:
         gcloud components install gke-gcloud-auth-plugin
         gcloud components update
 
-    #This step ensures that the gke-gcloud-auth-plugin is installed 
-    - name: Verify gke-gcloud-auth-plugin installation
+    # Step 9: Export environment variable USE_GKE_GCLOUD_AUTH_PLUGIN
+    - name: Set up authentication plugin for kubectl
       run: |
-        echo $PATH
-        which gke-gcloud-auth-plugin
-        gke-gcloud-auth-plugin --version
+        echo 'export USE_GKE_GCLOUD_AUTH_PLUGIN=True' >> ~/.bashrc
+        source ~/.bashrc
 
     # Step 10: Create GKE Cluster
     - name: Create GKE Cluster
