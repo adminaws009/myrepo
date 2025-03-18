@@ -82,6 +82,11 @@ jobs:
         run: |
           curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
           sudo mv /tmp/eksctl /usr/local/bin
+          
+        # Step 9: Ensure cluster does not exist before creating
+      - name: Ensure cluster does not exist before creating
+        run: |
+          eksctl delete cluster --name my-cluster --region ${{ secrets.AWS_REGION }} || true
 
       # Step 9: Create EKS Cluster using Fargate
       - name: Create EKS Cluster with eksctl
