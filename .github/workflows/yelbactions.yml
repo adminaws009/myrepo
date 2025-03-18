@@ -69,9 +69,9 @@ jobs:
             git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
           fi
 
-      # Step 7: Set up GCP Authentication
+      # Step 7: Set up GCP Authentication (using latest version)
       - name: Set up GCP Authentication
-        uses: google-github-actions/auth@v0
+        uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
@@ -80,6 +80,11 @@ jobs:
         run: |
           curl -sSL https://sdk.cloud.google.com | bash
           source $HOME/google-cloud-sdk/path.bash.inc
+
+      # Step 8.1: Install GKE Authentication Plugin
+      - name: Install GKE Authentication Plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
 
       # Step 9: Create GKE Cluster
       - name: Create GKE Cluster
