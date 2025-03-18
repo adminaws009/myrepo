@@ -87,11 +87,20 @@ jobs:
         echo 'export USE_GKE_GCLOUD_AUTH_PLUGIN=True' >> ~/.bashrc
         source ~/.bashrc
 
-    # Step 10: Create GKE Cluster
-    - name: Create GKE Cluster
+    # Step 10: Check if GKE Cluster exists, if not create it
+    - name: Check if GKE Cluster exists, if not create it
       run: |
         gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-        gcloud container clusters create my-cluster --zone ${{ secrets.GCP_ZONE }} --num-nodes=1
+
+
+        CLUSTER_EXISTS=$(gcloud container clusters describe my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
+
+        if [[ -z "$CLUSTER_EXISTS" ]]; then
+          echo "Cluster does not exist. Creating GKE Cluster..."
+          gcloud container clusters create my-cluster --zone ${{ secrets.GCP_ZONE }} --num-nodes=1
+        else
+          echo "Cluster already exists. Proceeding with existing cluster."
+        fi
 
     # Step 11: Configure kubectl to use GKE cluster
     - name: Configure kubectl to use GKE
