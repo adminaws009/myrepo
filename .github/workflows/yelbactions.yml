@@ -69,7 +69,7 @@ jobs:
             git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
           fi
 
-      # Step 7: Set up GCP Authentication (using latest version)
+      # Step 7: Set up GCP Authentication
       - name: Set up GCP Authentication
         uses: google-github-actions/auth@v1
         with:
@@ -78,31 +78,49 @@ jobs:
       # Step 8: Install Google Cloud SDK (gcloud)
       - name: Install gcloud SDK
         run: |
-          curl -sSL https://sdk.cloud.google.com | bash
-          source $HOME/google-cloud-sdk/path.bash.inc
+          sudo apt-get update
+          sudo apt-get install -y google-cloud-sdk
 
-      # Step 9: Create GKE Cluster
+      # Step 9: Install GKE Auth Plugin for kubectl
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+          echo "export USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $HOME/.bashrc
+          source $HOME/.bashrc
+
+      # Step 10: Check if GKE Cluster Exists
+      - name: Check if GKE Cluster Exists
+        id: check-cluster
+        run: |
+          if gcloud container clusters describe my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "CLUSTER_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "CLUSTER_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      # Step 11: Create GKE Cluster (Only if it does not exist)
       - name: Create GKE Cluster
+        if: env.CLUSTER_EXISTS == 'false'
         run: |
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
           gcloud container clusters create my-cluster --zone ${{ secrets.GCP_ZONE }} --num-nodes=1
 
-      # Step 10: Configure kubectl to use GKE cluster
+      # Step 12: Configure kubectl to use GKE cluster
       - name: Configure kubectl to use GKE
         run: |
           gcloud container clusters get-credentials my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-      # Step 11: Create Namespace for Yelb
+      # Step 13: Create Namespace for Yelb
       - name: Create Yelb Namespace
         run: |
           kubectl create namespace yelb || true
 
-      # Step 12: Deploy Yelb Application
+      # Step 14: Deploy Yelb Application
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f yelp-deploy.yaml -n yelb
 
-      # Step 13: Show LoadBalancer URL for yelb-ui
+      # Step 15: Show LoadBalancer URL for yelb-ui
       - name: Show LoadBalancer URL for yelb-ui
         run: |
           kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb
@@ -112,20 +130,15 @@ jobs:
           echo "LoadBalancer service details for yelb-ui:"
           kubectl describe svc yelb-ui-lb -n yelb
 
-      # Step 14: Clean up before Cluster Deletion (Force delete pods)
+      # Step 16: Clean up before Cluster Deletion (Force delete pods)
       - name: Ensure All Pods Are Deleted Before Cluster Deletion
         if: always()
         run: |
           kubectl delete pods --all --force --grace-period=0 --namespace yelb || true
           kubectl delete pods --all --force --grace-period=0 --namespace default || true
 
-      # Step 15: Check if Cluster Exists Before Deleting
-      - name: Check if GKE Cluster Exists Before Deleting
+      # Step 17: Delete GKE Cluster (Only if it exists)
+      - name: Delete GKE Cluster
+        if: env.CLUSTER_EXISTS == 'true'
         run: |
-          CLUSTER_EXISTS=$(gcloud container clusters describe my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
-          if [[ -n "$CLUSTER_EXISTS" ]]; then
-            echo "Cluster exists. Proceeding with deletion."
-            gcloud container clusters delete my-cluster --zone ${{ secrets.GCP_ZONE }} --quiet
-          else
-            echo "Cluster not found. Skipping deletion."
-          fi
+          gcloud container clusters delete my-cluster --zone ${{ secrets.GCP_ZONE }} --quiet
