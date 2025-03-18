@@ -81,11 +81,6 @@ jobs:
           curl -sSL https://sdk.cloud.google.com | bash
           source $HOME/google-cloud-sdk/path.bash.inc
 
-      # Step 8.1: Install GKE Authentication Plugin
-      - name: Install GKE Authentication Plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
-
       # Step 9: Create GKE Cluster
       - name: Create GKE Cluster
         run: |
@@ -124,8 +119,13 @@ jobs:
           kubectl delete pods --all --force --grace-period=0 --namespace yelb || true
           kubectl delete pods --all --force --grace-period=0 --namespace default || true
 
-      # Step 15: Delete GKE Cluster
-      - name: Delete GKE Cluster
-        if: always()
+      # Step 15: Check if Cluster Exists Before Deleting
+      - name: Check if GKE Cluster Exists Before Deleting
         run: |
-          gcloud container clusters delete my-cluster --zone ${{ secrets.GCP_ZONE }} --quiet
+          CLUSTER_EXISTS=$(gcloud container clusters describe my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
+          if [[ -n "$CLUSTER_EXISTS" ]]; then
+            echo "Cluster exists. Proceeding with deletion."
+            gcloud container clusters delete my-cluster --zone ${{ secrets.GCP_ZONE }} --quiet
+          else
+            echo "Cluster not found. Skipping deletion."
+          fi
