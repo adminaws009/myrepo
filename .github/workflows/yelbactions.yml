@@ -79,11 +79,11 @@ jobs:
         curl -sSL https://sdk.cloud.google.com | bash
         source $HOME/google-cloud-sdk/path.bash.inc
 
-    # Step 9: Install gke-gcloud-auth-plugin binary
+    # Step 9: Install gke-gcloud-auth-plugin binary using apt-get
     - name: Install gke-gcloud-auth-plugin
       run: |
-        gcloud components install gke-gcloud-auth-plugin
-        gcloud components update
+        sudo apt-get update
+        sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
 
     # Step 10: Create GKE Cluster
     - name: Create GKE Cluster
