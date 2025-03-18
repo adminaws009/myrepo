@@ -81,12 +81,6 @@ jobs:
         gcloud components install gke-gcloud-auth-plugin
         gcloud components update
 
-    # Step 9: Install gke-gcloud-auth-plugin binary using apt-get
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
-
     # Step 10: Create GKE Cluster
     - name: Create GKE Cluster
       run: |
