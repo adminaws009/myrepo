@@ -78,6 +78,8 @@ jobs:
       run: |
         curl -sSL https://sdk.cloud.google.com | bash
         source $HOME/google-cloud-sdk/path.bash.inc
+        gcloud components install gke-gcloud-auth-plugin
+        gcloud components update
 
     # Step 9: Install gke-gcloud-auth-plugin binary using apt-get
     - name: Install gke-gcloud-auth-plugin
