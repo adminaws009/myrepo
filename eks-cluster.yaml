@@ -6,20 +6,11 @@ metadata:
   region: us-east-1
   version: "1.27"
 
-vpc:
-  id: "" # Leave empty to automatically create a new VPC
-  subnets: {}
+fargateProfiles:
+  - name: default
+    selectors:
+      - namespace: default
 
-nodeGroups:
-- name: node-group
-  instanceType: t2.micro
-  desiredCapacity: 4
-  minSize: 4
-  maxSize: 4
-  ssh:
-    allow: true
-    publicKeyName: my-keypair # Replace with your SSH key pair
-
-cloudWatch:
-  clusterLogging:
-    enableTypes: [ "api", "audit", "authenticator", "controllerManager", "scheduler" ]
+  - name: yelb
+    selectors:
+      - namespace: yelb
