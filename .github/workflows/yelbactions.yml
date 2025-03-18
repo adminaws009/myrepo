@@ -69,33 +69,28 @@ jobs:
             git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
           fi
 
-      # Step 7: Configure AWS Credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      # Step 7: Set up GCP Authentication
+      - name: Set up GCP Authentication
+        uses: google-github-actions/auth@v0
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-      # Step 8: Install eksctl
-      - name: Install eksctl
+      # Step 8: Install Google Cloud SDK (gcloud)
+      - name: Install gcloud SDK
         run: |
-          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-          sudo mv /tmp/eksctl /usr/local/bin
-          
-        # Step 9: Ensure cluster does not exist before creating
-      - name: Ensure cluster does not exist before creating
-        run: |
-          eksctl delete cluster --name my-cluster --region ${{ secrets.AWS_REGION }} || true
+          curl -sSL https://sdk.cloud.google.com | bash
+          source $HOME/google-cloud-sdk/path.bash.inc
 
-      # Step 9: Create EKS Cluster using Fargate
-      - name: Create EKS Cluster with eksctl
-        run: eksctl create cluster -f eks-cluster.yaml
-
-      # Step 10: Update kubeconfig to connect to EKS
-      - name: Update kubeconfig
+      # Step 9: Create GKE Cluster
+      - name: Create GKE Cluster
         run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud container clusters create my-cluster --zone ${{ secrets.GCP_ZONE }} --num-nodes=1
+
+      # Step 10: Configure kubectl to use GKE cluster
+      - name: Configure kubectl to use GKE
+        run: |
+          gcloud container clusters get-credentials my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }}
 
       # Step 11: Create Namespace for Yelb
       - name: Create Yelb Namespace
@@ -107,9 +102,15 @@ jobs:
         run: |
           kubectl apply -f yelp-deploy.yaml -n yelb
 
-      # Step 13: Verify Deployment
-      - name: Verify Deployment
-        run: kubectl get pods -n yelb -o wide
+      # Step 13: Show LoadBalancer URL for yelb-ui
+      - name: Show LoadBalancer URL for yelb-ui
+        run: |
+          kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb
+          echo "Waiting for LoadBalancer to be provisioned..."
+          kubectl get svc yelb-ui-lb -n yelb --watch -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "LoadBalancer not ready yet."
+          kubectl get svc yelb-ui-lb -n yelb
+          echo "LoadBalancer service details for yelb-ui:"
+          kubectl describe svc yelb-ui-lb -n yelb
 
       # Step 14: Clean up before Cluster Deletion (Force delete pods)
       - name: Ensure All Pods Are Deleted Before Cluster Deletion
@@ -118,7 +119,8 @@ jobs:
           kubectl delete pods --all --force --grace-period=0 --namespace yelb || true
           kubectl delete pods --all --force --grace-period=0 --namespace default || true
 
-      # Step 15: Delete the EKS Cluster
-      - name: Delete EKS Cluster
+      # Step 15: Delete GKE Cluster
+      - name: Delete GKE Cluster
         if: always()
-        run: eksctl delete cluster --name my-cluster --region ${{ secrets.AWS_REGION }}
+        run: |
+          gcloud container clusters delete my-cluster --zone ${{ secrets.GCP_ZONE }} --quiet
