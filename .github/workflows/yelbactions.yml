@@ -81,6 +81,13 @@ jobs:
         gcloud components install gke-gcloud-auth-plugin
         gcloud components update
 
+    #This step ensures that the gke-gcloud-auth-plugin is installed 
+    - name: Verify gke-gcloud-auth-plugin installation
+      run: |
+        echo $PATH
+        which gke-gcloud-auth-plugin
+        gke-gcloud-auth-plugin --version
+
     # Step 10: Create GKE Cluster
     - name: Create GKE Cluster
       run: |
@@ -91,6 +98,7 @@ jobs:
     - name: Configure kubectl to use GKE
       run: |
         gcloud container clusters get-credentials my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }}
+        kubectl get nodes  # Check if kubectl is working correctly
 
     # Step 12: Create Namespace for Yelb
     - name: Create Yelb Namespace
