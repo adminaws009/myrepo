@@ -104,7 +104,7 @@ jobs:
           echo "Cluster does not exist. Creating GKE Autopilot Cluster..."
           gcloud container clusters create-auto my-cluster \
             --location=${{ secrets.GCP_ZONE }} \
-            --release-channel=STABLE
+            --release-channel=stable
         else
           echo "Cluster already exists. Proceeding with existing cluster."
         fi
@@ -129,4 +129,23 @@ jobs:
     - name: Show LoadBalancer URL for yelb-ui
       run: |
         kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb
-        echo "Waiting for LoadBalancer to be 
+        echo "Waiting for LoadBalancer to be provisioned..."
+        kubectl get svc yelb-ui-lb -n yelb --watch -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "LoadBalancer not ready yet."
+        kubectl get svc yelb-ui-lb -n yelb
+        echo "LoadBalancer service details for yelb-ui:"
+        kubectl describe svc yelb-ui-lb -n yelb
+
+    # Step 17: Cleanup Kubernetes resources (optional)
+    - name: Cleanup Yelb Kubernetes resources
+      run: |
+        kubectl delete all --all -n yelb || true
+        kubectl delete namespace yelb || true
+        echo "Cleaned up Yelb resources from Kubernetes."
+
+    # Step 18: Delete the GKE cluster (optional)
+    - name: Delete GKE Autopilot Cluster
+      run: |
+        echo "Deleting the GKE cluster..."
+        gcloud container clusters delete my-cluster \
+          --location=${{ secrets.GCP_ZONE }} \
+          --project=${{ secrets.GCP_PROJECT_ID }} --quiet
