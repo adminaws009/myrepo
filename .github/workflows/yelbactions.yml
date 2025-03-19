@@ -79,13 +79,13 @@ jobs:
 
       - name: Install gcloud SDK and GKE Auth Plugin
         run: |
-          echo "Adding Google Cloud repository..."
-          echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-          sudo apt-get install -y apt-transport-https ca-certificates gnupg
-          curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo tee /usr/share/keyrings/cloud.google.gpg > /dev/null
-          sudo apt-get update || sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3
-          sudo apt-get install -y google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin
-        # Add the Google Cloud repository, install necessary packages, and fix missing GPG key issue
+           echo "Adding Google Cloud repository..."
+           echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+           sudo apt-get install -y apt-transport-https ca-certificates gnupg
+           curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo tee /usr/share/keyrings/cloud.google.gpg > /dev/null
+           sudo apt-get update
+           sudo apt-get install -y google-cloud-sdk
+        # Install the complete google-cloud-sdk, which includes GKE Auth Plugin
 
       - name: Check if GKE Autopilot Cluster exists, if not create it
         run: |
@@ -132,7 +132,7 @@ jobs:
 
       - name: Cleanup Yelb Kubernetes resources
         run: |
-          kubectl delete all --all -n yelb || true
+          kubectl delete deployment,svc,pod -n yelb || true
           kubectl delete namespace yelb || true
           echo "Cleaned up Yelb resources from Kubernetes."
         # Clean up all Yelb-related resources from Kubernetes
