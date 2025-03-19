@@ -96,14 +96,14 @@ jobs:
       run: |
         CLUSTER_EXISTS=$(gcloud container clusters list \
           --filter="name=my-cluster" \
-          --location=${{ secrets.GCP_ZONE }} \
+          --location=${{ secrets.GCP_REGION }} \
           --project=${{ secrets.GCP_PROJECT_ID }} \
           --format="value(name)")
 
         if [[ -z "$CLUSTER_EXISTS" ]]; then
           echo "Cluster does not exist. Creating GKE Autopilot Cluster..."
           gcloud container clusters create-auto my-cluster \
-            --location=${{ secrets.GCP_ZONE }} \
+            --location=${{ secrets.GCP_REGION }} \
             --release-channel=stable
         else
           echo "Cluster already exists. Proceeding with existing cluster."
@@ -112,7 +112,7 @@ jobs:
     # Step 13: Configure kubectl to interact with the GKE cluster
     - name: Configure kubectl to use GKE
       run: |
-        gcloud container clusters get-credentials my-cluster --location=${{ secrets.GCP_ZONE }} --project=${{ secrets.GCP_PROJECT_ID }}
+        gcloud container clusters get-credentials my-cluster --location=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT_ID }}
         kubectl get nodes
 
     # Step 14: Create a Kubernetes namespace for Yelb (if it doesn't exist)
@@ -147,5 +147,5 @@ jobs:
       run: |
         echo "Deleting the GKE cluster..."
         gcloud container clusters delete my-cluster \
-          --location=${{ secrets.GCP_ZONE }} \
+          --location=${{ secrets.GCP_REGION }} \
           --project=${{ secrets.GCP_PROJECT_ID }} --quiet
