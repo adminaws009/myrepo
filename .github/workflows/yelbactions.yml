@@ -90,14 +90,17 @@ jobs:
     # Step 10: Check if GKE Cluster exists, if not create it
     - name: Check if GKE Cluster exists, if not create it
       run: |
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-
-
-        CLUSTER_EXISTS=$(gcloud container clusters describe my-cluster --zone ${{ secrets.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
+        CLUSTER_EXISTS=$(gcloud container clusters list \
+          --filter="name=my-cluster" \
+          --zone ${{ secrets.GCP_ZONE }} \
+          --project ${{ secrets.GCP_PROJECT_ID }} \
+          --format="value(name)")
 
         if [[ -z "$CLUSTER_EXISTS" ]]; then
           echo "Cluster does not exist. Creating GKE Cluster..."
-          gcloud container clusters create my-cluster --zone ${{ secrets.GCP_ZONE }} --num-nodes=1
+          gcloud container clusters create my-cluster \
+            --zone ${{ secrets.GCP_ZONE }} \
+            --num-nodes=1
         else
           echo "Cluster already exists. Proceeding with existing cluster."
         fi
