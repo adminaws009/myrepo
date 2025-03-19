@@ -78,8 +78,8 @@ jobs:
       # Step 8: Install gcloud SDK and update necessary components
       - name: Install gcloud SDK and GKE Auth Plugin
         run: |
-          sudo apt-get update && sudo apt-get install -y google-cloud-cli
-          gcloud components install gke-gcloud-auth-plugin
+          sudo apt-get update
+          sudo apt-get install -y google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin
 
       # Step 9: Check if the GKE Autopilot Cluster exists, if not create it
       - name: Check if GKE Autopilot Cluster exists, if not create it
