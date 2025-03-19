@@ -77,21 +77,14 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-    # Step 10: Install the gcloud SDK and update necessary components
+    # Step 10: Install gcloud SDK and update necessary components
     - name: Install gcloud SDK
       run: |
         curl -sSL https://sdk.cloud.google.com | bash
         source $HOME/google-cloud-sdk/path.bash.inc
-        gcloud components install gke-gcloud-auth-plugin
         gcloud components update
 
-    # Step 11: Set up authentication plugin for kubectl to use gcloud
-    - name: Set up authentication plugin for kubectl
-      run: |
-        echo 'export USE_GKE_GCLOUD_AUTH_PLUGIN=True' >> ~/.bashrc
-        source ~/.bashrc
-
-    # Step 12: Check if the GKE Autopilot Cluster exists, if not, create it
+    # Step 11: Check if the GKE Autopilot Cluster exists, if not create it
     - name: Check if GKE Autopilot Cluster exists, if not create it
       run: |
         CLUSTER_EXISTS=$(gcloud container clusters list \
@@ -109,23 +102,23 @@ jobs:
           echo "Cluster already exists. Proceeding with existing cluster."
         fi
 
-    # Step 13: Configure kubectl to interact with the GKE cluster
+    # Step 12: Configure kubectl to use the GKE cluster
     - name: Configure kubectl to use GKE
       run: |
         gcloud container clusters get-credentials my-cluster --location=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT_ID }}
         kubectl get nodes
 
-    # Step 14: Create a Kubernetes namespace for Yelb (if it doesn't exist)
+    # Step 13: Create a Kubernetes namespace for Yelb (if it doesn't exist)
     - name: Create Yelb Namespace
       run: |
         kubectl create namespace yelb || true
 
-    # Step 15: Apply the Kubernetes deployment from the updated `yelp-deploy.yaml`
+    # Step 14: Apply the Kubernetes deployment from the updated `yelp-deploy.yaml`
     - name: Apply Kubernetes Deployment
       run: |
         kubectl apply -f yelp-deploy.yaml -n yelb
 
-    # Step 16: Expose the Yelb UI deployment via a LoadBalancer and get the URL
+    # Step 15: Expose the Yelb UI deployment via a LoadBalancer and get the URL
     - name: Show LoadBalancer URL for yelb-ui
       run: |
         kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb
@@ -135,14 +128,14 @@ jobs:
         echo "LoadBalancer service details for yelb-ui:"
         kubectl describe svc yelb-ui-lb -n yelb
 
-    # Step 17: Cleanup Kubernetes resources (optional)
+    # Step 16: Cleanup Kubernetes resources (optional)
     - name: Cleanup Yelb Kubernetes resources
       run: |
         kubectl delete all --all -n yelb || true
         kubectl delete namespace yelb || true
         echo "Cleaned up Yelb resources from Kubernetes."
 
-    # Step 18: Delete the GKE cluster (optional)
+    # Step 17: Delete the GKE cluster (optional)
     - name: Delete GKE Autopilot Cluster
       run: |
         echo "Deleting the GKE cluster..."
