@@ -13,42 +13,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repository code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Step 3: Set image tag based on the GitHub commit SHA
       - name: Set image tag
         run: echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
 
+      # Step 4: Build and push yelb-appserver image
       - name: Build and Push yelb-appserver
         working-directory: yelb-appserver
         run: |
           docker build -t awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }} .
           docker push awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }}
 
+      # Step 5: Build and push yelb-db image
       - name: Build and Push yelb-db
         working-directory: yelb-db
         run: |
           docker build -t awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }} .
           docker push awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }}
 
+      # Step 6: Build and push yelb-ui image
       - name: Build and Push yelb-ui
         working-directory: yelb-ui
         run: |
           docker build -t awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }} .
           docker push awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }}
 
+      # Step 7: Update yelp-deploy.yaml with latest image tags
       - name: Update `yelp-deploy.yaml` with latest image tags
         run: |
           sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-appserver-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
           sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-db-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
           sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-ui-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
 
+      # Step 8: Commit and push the updated yelp-deploy.yaml file
       - name: Commit and push updated `yelp-deploy.yaml`
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -63,11 +71,7 @@ jobs:
             git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
           fi
 
-      - name: Set up GCP Authentication
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-
+      # Step 9: Install Google Cloud SDK and the GKE Auth Plugin
       - name: Install gcloud SDK and GKE Auth Plugin
         run: |
           echo "Adding Google Cloud repository..."
@@ -77,6 +81,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin
 
+      # Step 10: Set up Google Cloud authentication using the provided credentials
+      - name: Set up GCP Authentication
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      # Step 11: Check if the GKE Autopilot Cluster exists. If not, create it
       - name: Check if GKE Autopilot Cluster exists, if not create it
         run: |
           CLUSTER_EXISTS=$(gcloud container clusters list \
@@ -93,19 +104,23 @@ jobs:
             echo "Cluster already exists. Proceeding with existing cluster."
           fi
 
+      # Step 12: Configure kubectl to use the GKE cluster
       - name: Configure kubectl to use GKE
         run: |
           gcloud container clusters get-credentials my-cluster --location=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT_ID }}
           kubectl get nodes
 
+      # Step 13: Create the Yelb namespace in Kubernetes
       - name: Create Yelb Namespace
         run: |
           kubectl create namespace yelb || true
 
+      # Step 14: Apply the Kubernetes deployment using the updated yelp-deploy.yaml
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f yelp-deploy.yaml -n yelb
 
+      # Step 15: Expose the Yelb UI service and show the LoadBalancer URL
       - name: Show LoadBalancer URL for yelb-ui
         run: |
           kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb
@@ -115,12 +130,14 @@ jobs:
           echo "LoadBalancer service details for yelb-ui:"
           kubectl describe svc yelb-ui-lb -n yelb
 
+      # Step 16: Clean up Yelb Kubernetes resources (e.g., deployments, services)
       - name: Cleanup Yelb Kubernetes resources
         run: |
           kubectl delete all --all -n yelb || true
           kubectl delete namespace yelb || true
           echo "Cleaned up Yelb resources from Kubernetes."
 
+      # Step 17: Delete the GKE Autopilot Cluster if it exists
       - name: Delete GKE Autopilot Cluster (if exists)
         if: always()
         run: |
