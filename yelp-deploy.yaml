@@ -81,6 +81,13 @@ spec:
         image: awsadmin009/yelb-images:yelb-ui-cbd1070
         ports:
         - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -103,6 +110,13 @@ spec:
         image: redis:4.0.2
         ports:
         - containerPort: 6379
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -125,6 +139,13 @@ spec:
         image: awsadmin009/yelb-images:yelb-db-cbd1070
         ports:
         - containerPort: 5432
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -147,3 +168,10 @@ spec:
         image: awsadmin009/yelb-images:yelb-appserver-cbd1070
         ports:
         - containerPort: 4567
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
