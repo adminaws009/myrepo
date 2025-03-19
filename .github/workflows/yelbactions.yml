@@ -3,10 +3,10 @@ name: Yelb Docker Build, Push & Update Deployment
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
     branches:
-    - main
+      - main
 
 jobs:
   build_and_push:
@@ -28,35 +28,22 @@ jobs:
     - name: Set image tag
       run: echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
 
-    # Step 4: Build and Push Docker image for yelb-appserver
-    - name: Build and Push yelb-appserver
-      working-directory: yelb-appserver
+    # Step 4: Build and Push Docker images
+    - name: Build and Push Docker images
       run: |
-        docker build -t awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }} .
-        docker push awsadmin009/yelb-images:yelb-appserver-${{ env.IMAGE_TAG }}
+        for service in yelb-appserver yelb-db yelb-ui; do
+          docker build -t awsadmin009/yelb-images:${service}-${{ env.IMAGE_TAG }} ./${service}
+          docker push awsadmin009/yelb-images:${service}-${{ env.IMAGE_TAG }}
+        done
 
-    # Step 5: Build and Push Docker image for yelb-db
-    - name: Build and Push yelb-db
-      working-directory: yelb-db
-      run: |
-        docker build -t awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }} .
-        docker push awsadmin009/yelb-images:yelb-db-${{ env.IMAGE_TAG }}
-
-    # Step 6: Build and Push Docker image for yelb-ui
-    - name: Build and Push yelb-ui
-      working-directory: yelb-ui
-      run: |
-        docker build -t awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }} .
-        docker push awsadmin009/yelb-images:yelb-ui-${{ env.IMAGE_TAG }}
-
-    # Step 7: Update `yelp-deploy.yaml` with the latest image tags
+    # Step 5: Update `yelp-deploy.yaml` with the latest image tags
     - name: Update `yelp-deploy.yaml` with latest image tags
       run: |
         sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-appserver-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
         sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-db-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
         sed -i "s|\(image:\s*awsadmin009/yelb-images:yelb-ui-\).*|\1${{ env.IMAGE_TAG }}|" yelp-deploy.yaml
 
-    # Step 8: Commit and push the updated `yelp-deploy.yaml` to the repository
+    # Step 6: Commit and push updated `yelp-deploy.yaml`
     - name: Commit and push updated `yelp-deploy.yaml`
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -71,72 +58,71 @@ jobs:
           git push https://x-access-token:${GH_TOKEN}@github.com/adminaws009/myrepo.git HEAD:main
         fi
 
-    # Step 9: Set up GCP authentication using the service account credentials
-    - name: Set up GCP Authentication
+    # Step 7: Authenticate to GCP
+    - name: Authenticate to GCP
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-    # Step 10: Install gcloud SDK and update necessary components
-    - name: Install gcloud SDK
+    # Step 8: Install gcloud SDK and required GKE authentication plugin
+    - name: Install gcloud CLI and GKE Auth Plugin
       run: |
-        curl -sSL https://sdk.cloud.google.com | bash
-        source $HOME/google-cloud-sdk/path.bash.inc
-        gcloud components update
+        sudo apt-get update && sudo apt-get install -y google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin
+        echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
 
-    # Step 11: Check if the GKE Autopilot Cluster exists, if not create it
-    - name: Check if GKE Autopilot Cluster exists, if not create it
+    # Step 9: Check if GKE Autopilot Cluster exists, if not create it
+    - name: Check or Create GKE Cluster
       run: |
         CLUSTER_EXISTS=$(gcloud container clusters list \
           --filter="name=my-cluster" \
           --location=${{ secrets.GCP_REGION }} \
           --project=${{ secrets.GCP_PROJECT_ID }} \
           --format="value(name)")
-
         if [[ -z "$CLUSTER_EXISTS" ]]; then
-          echo "Cluster does not exist. Creating GKE Autopilot Cluster..."
+          echo "Creating GKE Autopilot Cluster..."
           gcloud container clusters create-auto my-cluster \
             --location=${{ secrets.GCP_REGION }} \
             --release-channel=stable
         else
-          echo "Cluster already exists. Proceeding with existing cluster."
+          echo "GKE Cluster already exists."
         fi
 
-    # Step 12: Configure kubectl to use the GKE cluster
-    - name: Configure kubectl to use GKE
+    # Step 10: Configure kubectl for GKE
+    - name: Configure kubectl
       run: |
         gcloud container clusters get-credentials my-cluster --location=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT_ID }}
+        kubectl version --client
         kubectl get nodes
 
-    # Step 13: Create a Kubernetes namespace for Yelb (if it doesn't exist)
+    # Step 11: Create Kubernetes namespace (if not exists)
     - name: Create Yelb Namespace
       run: |
         kubectl create namespace yelb || true
 
-    # Step 14: Apply the Kubernetes deployment from the updated `yelp-deploy.yaml`
+    # Step 12: Apply Kubernetes deployment
     - name: Apply Kubernetes Deployment
       run: |
         kubectl apply -f yelp-deploy.yaml -n yelb
 
-    # Step 15: Expose the Yelb UI deployment via a LoadBalancer and get the URL
-    - name: Show LoadBalancer URL for yelb-ui
+    # Step 13: Expose the Yelb UI deployment via LoadBalancer
+    - name: Expose Yelb UI via LoadBalancer
       run: |
-        kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb
-        echo "Waiting for LoadBalancer to be provisioned..."
-        kubectl get svc yelb-ui-lb -n yelb --watch -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "LoadBalancer not ready yet."
+        kubectl expose deployment yelb-ui --type=LoadBalancer --name=yelb-ui-lb -n yelb || true
+        echo "Waiting for LoadBalancer..."
+        sleep 30
         kubectl get svc yelb-ui-lb -n yelb
-        echo "LoadBalancer service details for yelb-ui:"
-        kubectl describe svc yelb-ui-lb -n yelb
 
-    # Step 16: Cleanup Kubernetes resources (optional)
+    # Step 14: Cleanup Kubernetes resources (optional)
     - name: Cleanup Yelb Kubernetes resources
+      if: always()
       run: |
         kubectl delete all --all -n yelb || true
         kubectl delete namespace yelb || true
-        echo "Cleaned up Yelb resources from Kubernetes."
+        echo "Cleaned up Yelb resources."
 
-    # Step 17: Delete the GKE cluster (optional)
-    - name: Delete GKE Autopilot Cluster
+    # Step 15: Delete the GKE cluster (optional)
+    - name: Delete GKE Cluster
+      if: always()
       run: |
         echo "Deleting the GKE cluster..."
         gcloud container clusters delete my-cluster \
