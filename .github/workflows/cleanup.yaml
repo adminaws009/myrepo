@@ -1,0 +1,59 @@
+name: Cleanup Yelb Deployment
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs every day at midnight UTC
+  workflow_dispatch:  # Allows manual execution from GitHub Actions UI
+
+env:
+  CLUSTER_NAME: my-cluster
+  GCP_REGION: us-central1
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up GCP Authentication
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set GCP Project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Verify GCP Authentication
+        run: |
+          gcloud auth list  # Verify service account access
+
+      - name: Configure kubectl to use GKE
+        run: |
+          gcloud container clusters get-credentials ${{ env.CLUSTER_NAME }} \
+            --location=${{ env.GCP_REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+          kubectl get nodes
+
+      - name: Cleanup Yelb Kubernetes resources
+        run: |
+          kubectl delete deployment,svc,pod -n yelb || true
+          kubectl delete namespace yelb || true
+          echo "Cleaned up Yelb resources from Kubernetes."
+
+      - name: Delete GKE Autopilot Cluster (if exists)
+        run: |
+          CLUSTER_EXISTS=$(gcloud container clusters list \
+            --filter="name=${{ env.CLUSTER_NAME }}" \
+            --location=${{ env.GCP_REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(name)")
+          if [[ -n "$CLUSTER_EXISTS" ]]; then
+            echo "Deleting the GKE cluster..."
+            gcloud container clusters delete ${{ env.CLUSTER_NAME }} \
+              --location=${{ env.GCP_REGION }} \
+              --project=${{ secrets.GCP_PROJECT_ID }} --quiet
+          else
+            echo "Cluster does not exist. Skipping deletion."
+          fi
