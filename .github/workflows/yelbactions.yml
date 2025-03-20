@@ -79,6 +79,11 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          export_default_credentials: true  # Export credentials for gcloud CLI
+
+      - name: Set GCP Project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Install gcloud SDK and GKE Auth Plugin
         run: |
