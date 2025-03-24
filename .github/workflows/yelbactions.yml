@@ -140,16 +140,27 @@ jobs:
 
       - name: Show LoadBalancer URL for yelb-ui
         run: |
-          # Wait for the LoadBalancer to be provisioned and get the external IP
           echo "Waiting for LoadBalancer to be provisioned..."
-          while true; do
+          MAX_ATTEMPTS=30
+          SLEEP_INTERVAL=10
+          ATTEMPT=0
+
+          while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
             EXTERNAL_IP=$(kubectl get svc yelb-ui -n yelb -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-            if [[ -n "$EXTERNAL_IP" ]]; then
-              echo "LoadBalancer external IP: http://$EXTERNAL_IP"
-              break
-            else
-              echo "LoadBalancer not ready yet. Retrying in 10 seconds..."
-              sleep 10
+            if [[ -z "$EXTERNAL_IP" ]]; then
+              EXTERNAL_IP=$(kubectl get svc yelb-ui -n yelb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
             fi
+
+            if [[ -n "$EXTERNAL_IP" ]]; then
+              echo "LoadBalancer external address: http://$EXTERNAL_IP"
+              echo "You can access the yelb-ui application in your browser at: http://$EXTERNAL_IP"
+              exit 0
+            fi
+
+            echo "LoadBalancer not ready yet. Retrying in $SLEEP_INTERVAL seconds... (Attempt: $((ATTEMPT+1))/$MAX_ATTEMPTS)"
+            sleep $SLEEP_INTERVAL
+            ((ATTEMPT++))
           done
-          echo "You can access the yelb-ui application in your browser at: http://$EXTERNAL_IP"
+
+          echo "Error: LoadBalancer did not get an external IP within $((MAX_ATTEMPTS * SLEEP_INTERVAL)) seconds."
+          exit 1
